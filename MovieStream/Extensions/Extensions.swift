@@ -1,87 +1,46 @@
 import SwiftUI
 
 extension View {
-    func glassBackground(cornerRadius: CGFloat = 16, opacity: CGFloat = 0.7) -> some View {
-        self.background(
-            .ultraThinMaterial,
-            in: RoundedRectangle(cornerRadius: cornerRadius)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(.white.opacity(0.15), lineWidth: 1)
-        )
+    func glass(cornerRadius: CGFloat = 16) -> some View {
+        self.background(.thickMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(Color.white.opacity(0.2), lineWidth: 1))
+            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
-    func glow(color: Color = .accentColor, radius: CGFloat = 20) -> some View {
-        self.shadow(color: color.opacity(0.5), radius: radius)
+    func glow(color: Color = .accentGold, radius: CGFloat = 15) -> some View {
+        self.shadow(color: color.opacity(0.4), radius: radius)
     }
 
-    func shimmer(active: Bool = true) -> some View {
-        self.modifier(ShimmerModifier(isActive: active))
+    func shimmer(active: Bool = false) -> some View {
+        self.overlay(active ? Color.black.opacity(0.3).cornerRadius(12) : nil)
+    }
+
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }
 
 extension Color {
-    static let accentGold = Color(red: 0.93, green: 0.76, blue: 0.18)
-    static let darkBackground = Color(red: 0.05, green: 0.05, blue: 0.08)
-    static let cardBackground = Color(red: 0.12, green: 0.12, blue: 0.17)
-    static let glassStroke = Color.white.opacity(0.15)
-    static let textSecondary = Color.white.opacity(0.6)
+    static let accentGold = Color(red: 0.95, green: 0.78, blue: 0.22)
+    static let bgTop = Color(red: 0.10, green: 0.08, blue: 0.18)
+    static let bgBot = Color(red: 0.04, green: 0.04, blue: 0.07)
+    static let cardBg = Color(red: 0.12, green: 0.11, blue: 0.18)
+    static let textSec = Color.white.opacity(0.55)
     static let ratingGold = Color(red: 0.95, green: 0.75, blue: 0.15)
-}
 
-// MARK: - Shimmer Effect
-struct ShimmerModifier: ViewModifier {
-    let isActive: Bool
-    @State private var phase: CGFloat = -1
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(isActive ? shimmerOverlay : nil)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+    static var bgGradient: LinearGradient {
+        LinearGradient(colors: [.bgTop, .bgBot], startPoint: .top, endPoint: .bottom)
     }
 
-    private var shimmerOverlay: some View {
-        GeometryReader { geo in
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    .clear,
-                    .white.opacity(0.1),
-                    .white.opacity(0.3),
-                    .white.opacity(0.1),
-                    .clear
-                ]),
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: geo.size.width * 2)
-            .offset(x: geo.size.width * phase)
-            .onAppear {
-                withAnimation(.linear(duration: 1.8).repeatForever(autoreverses: false)) {
-                    phase = 1
-                }
-            }
-        }
+    static var accentGradient: LinearGradient {
+        LinearGradient(colors: [.accentGold, .orange.opacity(0.7)], startPoint: .leading, endPoint: .trailing)
     }
 }
 
-// MARK: - Rounded Corner Helper
 struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
+    var radius: CGFloat
+    var corners: UIRectCorner
     func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
-}
-
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
+        Path(UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius)).cgPath)
     }
 }

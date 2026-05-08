@@ -4,23 +4,12 @@ import SwiftUI
 struct GlassCard<Content: View>: View {
     let content: Content
     var cornerRadius: CGFloat = 16
-
     init(cornerRadius: CGFloat = 16, @ViewBuilder content: () -> Content) {
         self.cornerRadius = cornerRadius
         self.content = content()
     }
-
     var body: some View {
-        content
-            .background(
-                .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: cornerRadius)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(.white.opacity(0.12), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.3), radius: 15, x: 0, y: 8)
+        content.glass(cornerRadius: cornerRadius)
     }
 }
 
@@ -28,244 +17,138 @@ struct GlassCard<Content: View>: View {
 struct MovieCard: View {
     let movie: Movie
     var size: CardSize = .medium
-
-    enum CardSize {
-        case small, medium, large, hero
-
-        var dimensions: CGSize {
+    enum CardSize { case small, medium, large, hero
+        var w: CGFloat {
             switch self {
-            case .small: return CGSize(width: 100, height: 150)
-            case .medium: return CGSize(width: 140, height: 210)
-            case .large: return CGSize(width: 180, height: 270)
-            case .hero: return CGSize(width: UIScreen.main.bounds.width - 48, height: 480)
+            case .small: return 100; case .medium: return 140
+            case .large: return 170; case .hero: return UIScreen.main.bounds.width - 40
+            }
+        }
+        var h: CGFloat {
+            switch self {
+            case .small: return 150; case .medium: return 210
+            case .large: return 250; case .hero: return 460
             }
         }
     }
 
     var body: some View {
-        AsyncImage(url: URL(string: movie.posterURL)) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            default:
-                ZStack {
-                    Color.cardBackground
-                    Image(systemName: "film.fill")
-                        .font(.title2)
-                        .foregroundColor(.textSecondary)
+        ZStack(alignment: .bottomLeading) {
+            AsyncImage(url: URL(string: movie.posterURL)) { phase in
+                switch phase {
+                case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                default: ZStack { Color.cardBg; Image(systemName: "film").foregroundColor(.textSec) }
                 }
             }
-        }
-        .frame(width: size.dimensions.width, height: size.dimensions.height)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(alignment: .bottom) {
-            if size == .large || size == .hero {
-                LinearGradient(
-                    gradient: Gradient(colors: [.clear, .black.opacity(0.8)]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: size.dimensions.height * 0.4)
-                .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
-            }
-        }
-        .overlay(alignment: .bottomLeading) {
-            if size == .large || size == .hero {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(movie.displayTitle)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    HStack(spacing: 8) {
-                        Label("\(movie.year)", systemImage: "calendar")
-                        Label(String(format: "%.1f", movie.rating), systemImage: "star.fill")
-                            .foregroundColor(.ratingGold)
+            .frame(width: size.w, height: size.h)
+            .clipped()
+            if size == .hero {
+                LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom)
+                    .frame(height: size.h * 0.5)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(movie.displayTitle).font(.title2).bold().foregroundColor(.white).lineLimit(2)
+                    HStack(spacing: 12) {
+                        Label("\(movie.year)", systemImage: "calendar").font(.caption)
+                        Label("\(movie.rating, specifier: "%.1f")", systemImage: "star.fill").foregroundColor(.ratingGold).font(.caption)
                     }
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-                }
-                .padding(12)
+                }.padding()
             }
-        }
-        .overlay(alignment: .topTrailing) {
             if movie.isDubbed || movie.isSubtitled {
-                HStack(spacing: 4) {
-                    if movie.isDubbed {
-                        Text("مدبلج")
-                            .font(.system(size: size == .small ? 8 : 9, weight: .bold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
-                            .foregroundColor(.white)
-                    }
-                    if movie.isSubtitled {
-                        Text("مترجم")
-                            .font(.system(size: size == .small ? 8 : 9, weight: .bold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
-                            .foregroundColor(.white)
-                    }
-                }
-                .padding(8)
+                VStack(spacing: 3) {
+                    if movie.isDubbed { label("مدبلج") }
+                    if movie.isSubtitled { label("مترجم") }
+                }.padding(6).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             }
         }
-        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+        .frame(width: size.w, height: size.h)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.4), radius: size == .hero ? 15 : 6)
+    }
+
+    func label(_ text: String) -> some View {
+        Text(text).font(.system(size: 9, weight: .bold)).padding(.horizontal, 6).padding(.vertical, 3)
+            .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 5)).foregroundColor(.white)
     }
 }
 
 // MARK: - Genre Chip
 struct GenreChip: View {
-    let genre: Genre
-    let isSelected: Bool
-    var action: () -> Void
-
+    let genre: Genre; let isSelected: Bool; var action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: genre.icon)
-                    .font(.caption)
-                Text(genre.rawValue)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .bold : .medium)
+            HStack(spacing: 5) {
+                Image(systemName: genre.icon).font(.caption)
+                Text(genre.rawValue).font(.subheadline).fontWeight(isSelected ? .bold : .medium)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                isSelected
-                    ? AnyShapeStyle(Color.accentGold.opacity(0.3))
-                    : AnyShapeStyle(.ultraThinMaterial),
-                in: RoundedRectangle(cornerRadius: 20)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? Color.accentGold : .white.opacity(0.1), lineWidth: 1.5)
-            )
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .background(isSelected ? Color.accentGold.opacity(0.25) : .thickMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(isSelected ? Color.accentGold : .white.opacity(0.1), lineWidth: 1.5))
             .foregroundColor(isSelected ? .accentGold : .white)
-        }
-        .buttonStyle(.plain)
+        }.buttonStyle(.plain)
     }
 }
 
 // MARK: - Category Card
 struct CategoryCard: View {
     let genre: Genre
-
     var body: some View {
         GlassCard(cornerRadius: 20) {
-            VStack(spacing: 12) {
-                Image(systemName: genre.icon)
-                    .font(.system(size: 28))
-                    .foregroundColor(.accentGold)
-                    .glow(color: .accentGold, radius: 10)
-
-                Text(genre.rawValue)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(width: 100, height: 100)
-            .padding(8)
-        }
-    }
-}
-
-// MARK: - Star Rating
-struct StarRating: View {
-    let rating: Double
-    var maximum: Int = 5
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<maximum, id: \.self) { index in
-                Image(systemName: index < Int(rating.rounded()) ? "star.fill" : "star")
-                    .font(.caption)
-                    .foregroundColor(.ratingGold)
-            }
-            Text(String(format: "%.1f", rating))
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.ratingGold)
-                .padding(.leading, 4)
+            VStack(spacing: 10) {
+                Image(systemName: genre.icon).font(.system(size: 26)).foregroundColor(.accentGold)
+                Text(genre.rawValue).font(.headline).foregroundColor(.white).multilineTextAlignment(.center)
+            }.frame(width: 100, height: 100).padding(8)
         }
     }
 }
 
 // MARK: - Quality Badge
 struct QualityBadge: View {
-    let quality: String
-    var isSelected: Bool = false
-
+    let quality: String; var isSelected: Bool = false
     var body: some View {
-        Text(quality)
-            .font(.caption)
-            .fontWeight(.bold)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                isSelected
-                    ? AnyShapeStyle(Color.accentGold.opacity(0.3))
-                    : AnyShapeStyle(.ultraThinMaterial),
-                in: RoundedRectangle(cornerRadius: 8)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.accentGold : .white.opacity(0.1), lineWidth: 1)
-            )
+        Text(quality).font(.caption).fontWeight(.bold).padding(.horizontal, 10).padding(.vertical, 5)
+            .background(isSelected ? Color.accentGold.opacity(0.25) : .thickMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? Color.accentGold : .white.opacity(0.1), lineWidth: 1))
             .foregroundColor(isSelected ? .accentGold : .white)
     }
 }
 
 // MARK: - Animated Tab Bar
-struct AnimatedTabBar: View {
+struct AppTabBar: View {
     @Binding var selectedTab: AppTab
-    @Namespace private var tabAnimation
-
     var body: some View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                        selectedTab = tab
-                    }
+                    selectedTab = tab
                 } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: tab.rawValue)
-                            .font(.system(size: 20))
-                            .fontWeight(selectedTab == tab ? .bold : .regular)
-                            .frame(height: 24)
-
-                        Text(tab.arabicTitle)
-                            .font(.system(size: 9))
-                            .fontWeight(selectedTab == tab ? .bold : .medium)
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.rawValue).font(.system(size: 20)).frame(height: 22)
+                        Text(tab.arabicTitle).font(.system(size: 9)).fontWeight(selectedTab == tab ? .bold : .medium)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background {
-                        if selectedTab == tab {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.accentGold.opacity(0.15))
-                                .matchedGeometryEffect(id: "tab_bg", in: tabAnimation)
-                        }
-                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .background(selectedTab == tab ? Color.accentGold.opacity(0.15) : nil, in: RoundedRectangle(cornerRadius: 16))
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(selectedTab == tab ? .accentGold : .textSecondary)
+                .foregroundColor(selectedTab == tab ? .accentGold : .textSec)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(.white.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: -5)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 8).padding(.vertical, 6)
+        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.1), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 15)
+        .padding(.horizontal, 12).padding(.bottom, 8)
+    }
+}
+
+// MARK: - Star Rating
+struct StarRating: View {
+    let rating: Double; var max: Int = 5
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<max, id: \.self) { i in
+                Image(systemName: i < Int(rating.rounded()) ? "star.fill" : "star").font(.caption).foregroundColor(.ratingGold)
+            }
+            Text("\(rating, specifier: "%.1f")").font(.caption).fontWeight(.bold).foregroundColor(.ratingGold)
+        }
     }
 }

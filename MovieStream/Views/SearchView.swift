@@ -1,154 +1,81 @@
 import SwiftUI
 
 struct SearchView: View {
-    @StateObject private var viewModel = SearchViewModel()
-    @State private var selectedMovie: Movie?
-    @FocusState private var isSearchFocused: Bool
+    @StateObject private var vm = SearchViewModel()
+    @State private var selected: Movie?
+    @FocusState private var focused: Bool
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                searchBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundColor(.textSec)
+                    TextField("ابحث عن فيلم...", text: $vm.searchText).foregroundColor(.white).focused($focused)
+                        .onSubmit { Task { await vm.search() } }
+                    if !vm.searchText.isEmpty {
+                        Button { vm.clearSearch() } label: { Image(systemName: "xmark.circle.fill").foregroundColor(.textSec) }
+                    }
+                }.padding(.horizontal, 12).padding(.vertical, 11).background(.thickMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.1), lineWidth: 1))
+                Button { Task { await vm.search() } } label: {
+                    Image(systemName: "arrow.left").font(.headline).foregroundColor(.black).padding(13)
+                        .background(Color.accentGold, in: RoundedRectangle(cornerRadius: 13))
+                }.buttonStyle(.plain)
+            }.padding(.horizontal, 16).padding(.top, 8)
 
-                if viewModel.searchText.isEmpty {
-                    recentSearchesView
-                } else if viewModel.isSearching {
-                    Spacer()
-                    ProgressView()
-                        .tint(.accentGold)
-                    Spacer()
-                } else if viewModel.searchResults.isEmpty {
-                    emptyResultsView
-                } else {
-                    searchResultsView
-                }
+            if vm.searchText.isEmpty {
+                recentView
+            } else if vm.isSearching {
+                Spacer(); ProgressView().tint(.accentGold); Spacer()
+            } else if vm.searchResults.isEmpty && !vm.searchText.isEmpty {
+                emptyView
+            } else {
+                resultsView
             }
-            .background(Color.darkBackground)
-            .fullScreenCover(item: $selectedMovie) { movie in
-                MovieDetailView(movie: movie)
-            }
-        }
+        }.background(Color.bgGradient).fullScreenCover(item: $selected) { MovieDetailView(movie: $0) }
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 12) {
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.textSecondary)
-                TextField("ابحث عن فيلم أو مسلسل...", text: $viewModel.searchText)
-                    .foregroundColor(.white)
-                    .focused($isSearchFocused)
-                    .onSubmit {
-                        Task { await viewModel.search() }
+    private var recentView: some View {
+        Group {
+            if !vm.recentSearches.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("عمليات البحث الأخيرة").font(.headline).foregroundColor(.white).padding(.horizontal, 16).padding(.top, 20)
+                    ForEach(vm.recentSearches, id: \.self) { q in
+                        Button {
+                            vm.searchText = q; Task { await vm.search() }
+                        } label: {
+                            HStack {
+                                Image(systemName: "clock.arrow.circlepath").foregroundColor(.textSec)
+                                Text(q).foregroundColor(.white); Spacer()
+                            }.padding(.horizontal, 16).padding(.vertical, 6)
+                        }.buttonStyle(.plain)
                     }
-                if !viewModel.searchText.isEmpty {
-                    Button {
-                        viewModel.clearSearch()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.textSecondary)
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(.white.opacity(0.1), lineWidth: 1)
-            )
-
-            Button {
-                Task { await viewModel.search() }
-            } label: {
-                Image(systemName: "arrow.left")
-                    .font(.headline)
-                    .foregroundColor(.black)
-                    .padding(14)
-                    .background(Color.accentGold, in: RoundedRectangle(cornerRadius: 14))
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var recentSearchesView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if !viewModel.recentSearches.isEmpty {
-                Text("عمليات البحث الأخيرة")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 24)
-
-                ForEach(viewModel.recentSearches, id: \.self) { query in
-                    Button {
-                        viewModel.searchText = query
-                        Task { await viewModel.search() }
-                    } label: {
-                        HStack {
-                            Image(systemName: "clock.arrow.circlepath")
-                                .foregroundColor(.textSecondary)
-                            Text(query)
-                                .foregroundColor(.white)
-                            Spacer()
-                            Image(systemName: "arrow.up.left")
-                                .font(.caption)
-                                .foregroundColor(.textSecondary)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.plain)
                 }
             } else {
                 Spacer()
-                VStack(spacing: 16) {
-                    Image(systemName: "film.stack")
-                        .font(.system(size: 60))
-                        .foregroundColor(.textSecondary)
-                    Text("ابحث عن أفلامك المفضلة")
-                        .font(.title3)
-                        .foregroundColor(.textSecondary)
-                }
-                .frame(maxWidth: .infinity)
+                VStack(spacing: 12) { Image(systemName: "film.stack").font(.system(size: 50)).foregroundColor(.textSec)
+                    Text("ابحث عن أفلامك المفضلة").foregroundColor(.textSec) }
                 Spacer()
             }
         }
     }
 
-    private var emptyResultsView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 50))
-                .foregroundColor(.textSecondary)
-            Text("لا توجد نتائج لـ \"\(viewModel.searchText)\"")
-                .font(.headline)
-                .foregroundColor(.white)
-            Text("تأكد من الإملاء أو جرب بحثاً آخر")
-                .font(.subheadline)
-                .foregroundColor(.textSecondary)
+    private var emptyView: some View {
+        VStack(spacing: 12) { Spacer()
+            Image(systemName: "magnifyingglass").font(.system(size: 40)).foregroundColor(.textSec)
+            Text("لا توجد نتائج").foregroundColor(.white)
+            Text("تأكد من الإملاء أو جرب بحثاً آخر").foregroundColor(.textSec).font(.subheadline)
             Spacer()
         }
     }
 
-    private var searchResultsView: some View {
+    private var resultsView: some View {
         ScrollView(showsIndicators: false) {
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 12)
-            ], spacing: 16) {
-                ForEach(viewModel.searchResults) { movie in
-                    Button {
-                        selectedMovie = movie
-                    } label: {
-                        MovieCard(movie: movie, size: .large)
-                    }
-                    .buttonStyle(.plain)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 170), spacing: 10)], spacing: 14) {
+                ForEach(vm.searchResults) { m in
+                    Button { selected = m } label: { MovieCard(movie: m, size: .large) }.buttonStyle(.plain)
                 }
-            }
-            .padding(20)
+            }.padding(16)
         }
     }
 }

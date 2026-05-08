@@ -2,257 +2,135 @@ import SwiftUI
 
 struct MovieDetailView: View {
     let movie: Movie
-    @StateObject private var viewModel = MovieDetailViewModel()
+    @StateObject private var vm = MovieDetailViewModel()
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var favoritesVM: FavoritesViewModel
     @State private var showPlayer = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Color.darkBackground.ignoresSafeArea()
-
+            Color.bgGradient.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    backdropSection
-                    infoSection
-                    serverSection
-                    castSection
+                    backdrop
+                    info
+                    servers
+                    cast
                 }
             }
-
-            closeButton
+            Button { dismiss() } label: {
+                Image(systemName: "xmark").font(.headline).foregroundColor(.white).padding(12)
+                    .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }.padding(12)
         }
-        .onAppear {
-            viewModel.loadMovieDetail(movie: movie)
-        }
+        .onAppear { vm.loadMovieDetail(movie: movie) }
         .fullScreenCover(isPresented: $showPlayer) {
-            if let server = viewModel.selectedServer,
-               let quality = server.qualities.first(where: { $0.label == viewModel.selectedQuality }) ?? server.qualities.first {
-                MoviePlayerView(
-                    streamURL: URL(string: quality.url)!,
-                    isEmbed: server.type == .embed,
-                    movieTitle: movie.displayTitle
-                )
+            if let s = vm.selectedServer, let q = s.qualities.first(where: { $0.label == vm.selectedQuality }) ?? s.qualities.first {
+                MoviePlayerView(streamURL: URL(string: q.url)!, isEmbed: s.type == .embed, movieTitle: movie.displayTitle)
             }
         }
     }
 
-    private var closeButton: some View {
-        Button {
-            dismiss()
-        } label: {
-            Image(systemName: "xmark")
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding(12)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        }
-        .padding(16)
-    }
-
-    private var backdropSection: some View {
+    private var backdrop: some View {
         ZStack(alignment: .bottom) {
-            AsyncImage(url: URL(string: movie.backdropURL)) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                default:
-                    Color.cardBackground
+            AsyncImage(url: URL(string: movie.backdropURL)) { ph in
+                switch ph {
+                case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                default: Color.cardBg
                 }
-            }
-            .frame(height: 280)
-            .clipped()
-
-            LinearGradient(
-                gradient: Gradient(colors: [.clear, .darkBackground]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 100)
-
+            }.frame(height: 270).clipped()
+            LinearGradient(colors: [.clear, .bgBot], startPoint: .top, endPoint: .bottom).frame(height: 80)
             HStack(alignment: .bottom) {
-                MovieCard(movie: movie, size: .medium)
-                    .offset(y: 50)
-
+                MovieCard(movie: movie, size: .medium).offset(y: 40)
                 Spacer()
-
                 Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                        favoritesVM.toggleFavorite(movie)
-                    }
+                    favoritesVM.toggleFavorite(movie)
                 } label: {
                     Image(systemName: favoritesVM.isFavorite(movie) ? "heart.fill" : "heart")
-                        .font(.title3)
-                        .foregroundColor(favoritesVM.isFavorite(movie) ? .red : .white)
-                        .padding(14)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .offset(y: 50)
-                }
-            }
-            .padding(.horizontal, 20)
+                        .font(.title3).foregroundColor(favoritesVM.isFavorite(movie) ? .red : .white).padding(13)
+                        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 13)).offset(y: 40)
+                }.buttonStyle(.plain)
+            }.padding(.horizontal, 16)
         }
     }
 
-    private var infoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Spacer().frame(height: 60)
-
-            Text(movie.displayTitle)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-
-            HStack(spacing: 16) {
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Spacer().frame(height: 50)
+            Text(movie.displayTitle).font(.system(size: 26, weight: .bold)).foregroundColor(.white)
+            HStack(spacing: 14) {
                 StarRating(rating: movie.rating)
-                Text("\(movie.year)")
-                    .font(.subheadline)
-                    .foregroundColor(.textSecondary)
-                Text("\(movie.duration) دقيقة")
-                    .font(.subheadline)
-                    .foregroundColor(.textSecondary)
+                Text("\(movie.year)").font(.subheadline).foregroundColor(.textSec)
+                Text("\(movie.duration) دقيقة").font(.subheadline).foregroundColor(.textSec)
             }
-
-            HStack(spacing: 8) {
-                ForEach(movie.qualities, id: \.self) { quality in
-                    QualityBadge(quality: quality)
-                }
-                if movie.isDubbed {
-                    QualityBadge(quality: "مدبلج")
-                }
-                if movie.isSubtitled {
-                    QualityBadge(quality: "مترجم")
-                }
+            HStack(spacing: 6) {
+                ForEach(movie.qualities, id: \.self) { QualityBadge(quality: $0) }
+                if movie.isDubbed { QualityBadge(quality: "مدبلج") }
+                if movie.isSubtitled { QualityBadge(quality: "مترجم") }
             }
-
-            Text(movie.displayOverview)
-                .font(.body)
-                .foregroundColor(.textSecondary)
-                .lineSpacing(4)
-
+            Text(movie.displayOverview).font(.body).foregroundColor(.textSec).lineSpacing(3)
             HStack {
-                Text("المخرج:")
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                Text(movie.director)
-                    .font(.subheadline)
-                    .foregroundColor(.textSecondary)
+                Text("المخرج:").font(.subheadline).foregroundColor(.white)
+                Text(movie.director).font(.subheadline).foregroundColor(.textSec)
             }
-        }
-        .padding(.horizontal, 20)
+        }.padding(.horizontal, 16)
     }
 
-    private var serverSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("سيرفرات المشاهدة")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-
+    private var servers: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("سيرفرات المشاهدة").font(.title3).bold().foregroundColor(.white).padding(.horizontal, 16).padding(.top, 20)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(viewModel.streamingSources) { source in
+                HStack(spacing: 10) {
+                    ForEach(vm.streamingSources) { s in
                         Button {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                viewModel.selectedServer = source
-                            }
+                            vm.selectedServer = s
                         } label: {
-                            GlassCard(cornerRadius: 14) {
-                                VStack(spacing: 8) {
-                                    Image(systemName: source.type == .embed ? "globe" : "play.rectangle")
-                                        .font(.title2)
-                                        .foregroundColor(viewModel.selectedServer?.id == source.id ? .accentGold : .white)
-                                    Text(source.serverNameArabic)
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(viewModel.selectedServer?.id == source.id ? .accentGold : .white)
-                                }
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 16)
-                            }
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(viewModel.selectedServer?.id == source.id ? Color.accentGold : .clear, lineWidth: 2)
-                            )
-                        }
-                        .buttonStyle(.plain)
+                            VStack(spacing: 6) {
+                                Image(systemName: s.type == .embed ? "globe" : "play.rectangle").font(.title2)
+                                    .foregroundColor(vm.selectedServer?.id == s.id ? .accentGold : .white)
+                                Text(s.serverNameArabic).font(.caption).fontWeight(.medium)
+                                    .foregroundColor(vm.selectedServer?.id == s.id ? .accentGold : .white)
+                            }.padding(.horizontal, 22).padding(.vertical, 14)
+                                .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(vm.selectedServer?.id == s.id ? Color.accentGold : .clear, lineWidth: 2))
+                        }.buttonStyle(.plain)
                     }
-                }
-                .padding(.horizontal, 20)
+                }.padding(.horizontal, 16)
             }
-
-            if let server = viewModel.selectedServer {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("اختر الدقة:")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-
-                    HStack(spacing: 10) {
-                        ForEach(server.qualities) { quality in
-                            Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    viewModel.selectedQuality = quality.label
-                                }
-                            } label: {
-                                QualityBadge(quality: quality.label, isSelected: viewModel.selectedQuality == quality.label)
-                            }
-                            .buttonStyle(.plain)
+            if let s = vm.selectedServer {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("اختر الدقة:").font(.subheadline).fontWeight(.medium).foregroundColor(.white)
+                    HStack(spacing: 8) {
+                        ForEach(s.qualities) { q in
+                            Button { vm.selectedQuality = q.label } label: {
+                                QualityBadge(quality: q.label, isSelected: vm.selectedQuality == q.label)
+                            }.buttonStyle(.plain)
                         }
                     }
-                }
-                .padding(.horizontal, 20)
+                }.padding(.horizontal, 16)
             }
-
             Button {
                 showPlayer = true
             } label: {
-                HStack {
-                    Image(systemName: "play.fill")
-                    Text("مشاهدة الآن")
-                }
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.accentGold, in: RoundedRectangle(cornerRadius: 16))
-                .glow(color: .accentGold, radius: 15)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .buttonStyle(.plain)
+                Label("مشاهدة الآن", systemImage: "play.fill").font(.headline).foregroundColor(.black)
+                    .frame(maxWidth: .infinity).padding(.vertical, 15)
+                    .background(Color.accentGold, in: RoundedRectangle(cornerRadius: 16)).glow()
+            }.buttonStyle(.plain).padding(.horizontal, 16).padding(.top, 6)
         }
     }
 
-    private var castSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("طاقم العمل")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-
+    private var cast: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("طاقم العمل").font(.title3).bold().foregroundColor(.white).padding(.horizontal, 16).padding(.top, 12)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(movie.cast, id: \.self) { actor in
-                        VStack(spacing: 8) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 50))
-                                .foregroundColor(.textSecondary)
-                            Text(actor)
-                                .font(.caption)
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                                .frame(width: 80)
-                                .multilineTextAlignment(.center)
+                HStack(spacing: 14) {
+                    ForEach(movie.cast, id: \.self) { a in
+                        VStack(spacing: 6) {
+                            Image(systemName: "person.circle.fill").font(.system(size: 44)).foregroundColor(.textSec)
+                            Text(a).font(.caption).foregroundColor(.white).lineLimit(1).frame(width: 80).multilineTextAlignment(.center)
                         }
                     }
-                }
-                .padding(.horizontal, 20)
+                }.padding(.horizontal, 16)
             }
             .padding(.bottom, 30)
         }

@@ -4,9 +4,7 @@ import AVFoundation
 import WebKit
 
 struct MoviePlayerView: View {
-    let streamURL: URL
-    let isEmbed: Bool
-    let movieTitle: String
+    let streamURL: URL; let isEmbed: Bool; let movieTitle: String
     @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer?
     @State private var isPlaying = true
@@ -17,220 +15,111 @@ struct MoviePlayerView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-
             if isEmbed {
-                WebView(url: streamURL)
+                WebView(url: streamURL).edgesIgnoringSafeArea(.all)
+            } else if let p = player {
+                VideoPlayerWrap(player: p, isPlaying: $isPlaying, currentTime: $currentTime, totalTime: $totalTime)
                     .edgesIgnoringSafeArea(.all)
             } else {
-                if let player = player {
-                    VideoPlayerController(player: player, isPlaying: $isPlaying, currentTime: $currentTime, totalTime: $totalTime)
-                        .edgesIgnoringSafeArea(.all)
+                VStack(spacing: 12) {
+                    Image(systemName: "play.slash").font(.system(size: 50)).foregroundColor(.textSec)
+                    Text("لا يمكن تشغيل الفيديو").foregroundColor(.white)
+                    Text("تأكد من إعداد API في الإعدادات").foregroundColor(.textSec).font(.caption)
                 }
             }
-
-            if showControls {
-                controlsOverlay
-                    .transition(.opacity)
-            }
-
-            VStack {
-                HStack {
-                    Button {
-                        player?.pause()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(12)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    Spacer()
-                    Text(movieTitle)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    Spacer()
-                    Color.clear.frame(width: 44, height: 44)
-                }
-                .padding(16)
-                Spacer()
-            }
-            .opacity(showControls ? 1 : 0)
+            if showControls { controls.opacity(1) } else { controls.opacity(0) }
         }
         .onAppear {
             if !isEmbed {
-                player = AVPlayer(url: streamURL)
-                player?.play()
+                player = AVPlayer(url: streamURL); player?.play()
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                withAnimation(.easeInOut) {
-                    showControls = false
-                }
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { withAnimation(.easeOut) { showControls = false } }
         }
-        .onDisappear {
-            player?.pause()
-            player = nil
-        }
+        .onDisappear { player?.pause(); player = nil }
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                showControls.toggle()
-            }
-            if showControls {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    withAnimation(.easeInOut) {
-                        showControls = false
-                    }
-                }
-            }
+            withAnimation(.easeOut(duration: 0.25)) { showControls.toggle() }
+            if showControls { DispatchQueue.main.asyncAfter(deadline: .now() + 5) { withAnimation(.easeOut) { showControls = false } } }
         }
     }
 
-    private var controlsOverlay: some View {
-        VStack {
+    private var controls: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button { player?.pause(); dismiss() } label: {
+                    Image(systemName: "xmark").font(.headline).foregroundColor(.white).padding(10)
+                        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 10))
+                }
+                Spacer()
+            }.padding(12)
             Spacer()
             if !isEmbed {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     HStack {
-                        Text(formatTime(currentTime))
-                            .font(.caption)
-                            .foregroundColor(.white)
-                        Slider(value: $currentTime, in: 0...totalTime) { editing in
-                            if !editing {
-                                player?.seek(to: CMTime(seconds: currentTime, preferredTimescale: 600))
-                            }
+                        Text(fmt(currentTime)).font(.caption).foregroundColor(.white)
+                        Slider(value: $currentTime, in: 0...totalTime) { ed in
+                            if !ed { player?.seek(to: CMTime(seconds: currentTime, preferredTimescale: 600)) }
+                        }.tint(.accentGold)
+                        Text(fmt(totalTime)).font(.caption).foregroundColor(.white)
+                    }.padding(.horizontal, 16)
+                    HStack(spacing: 36) {
+                        Button { player?.seek(to: CMTime(seconds: max(0, currentTime - 10), preferredTimescale: 600)) } label: {
+                            Image(systemName: "gobackward.10").font(.title2).foregroundColor(.white)
                         }
-                        .tint(.accentGold)
-                        Text(formatTime(totalTime))
-                            .font(.caption)
-                            .foregroundColor(.white)
-                    }
-                    .padding(.horizontal, 20)
-
-                    HStack(spacing: 40) {
                         Button {
-                            player?.seek(to: CMTime(seconds: max(0, currentTime - 10), preferredTimescale: 600))
-                        } label: {
-                            Image(systemName: "gobackward.10")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                        }
-
-                        Button {
-                            if isPlaying {
-                                player?.pause()
-                            } else {
-                                player?.play()
-                            }
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                isPlaying.toggle()
-                            }
+                            isPlaying ? player?.pause() : player?.play(); isPlaying.toggle()
                         } label: {
                             Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.system(size: 54))
-                                .foregroundColor(.white)
-                                .glow(color: .white, radius: 10)
+                                .font(.system(size: 50)).foregroundColor(.white)
                         }
-
-                        Button {
-                            player?.seek(to: CMTime(seconds: min(totalTime, currentTime + 10), preferredTimescale: 600))
-                        } label: {
-                            Image(systemName: "goforward.10")
-                                .font(.title2)
-                                .foregroundColor(.white)
+                        Button { player?.seek(to: CMTime(seconds: min(totalTime, currentTime + 10), preferredTimescale: 600)) } label: {
+                            Image(systemName: "goforward.10").font(.title2).foregroundColor(.white)
                         }
                     }
-                }
-                .padding(.bottom, 40)
-                .padding(.top, 20)
-                .background {
-                    LinearGradient(
-                        gradient: Gradient(colors: [.clear, .black.opacity(0.8)]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
+                }.padding(.bottom, 30).padding(.top, 16)
+                    .background(LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .top, endPoint: .bottom))
             }
         }
     }
 
-    private func formatTime(_ time: Double) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
+    private func fmt(_ t: Double) -> String { let m = Int(t)/60; let s = Int(t)%60; return "\(m):\(String(format: "%02d", s))" }
 }
 
-// MARK: - WebView for Embed Streams
 struct WebView: UIViewRepresentable {
     let url: URL
-
     func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.scrollView.isScrollEnabled = false
-        webView.backgroundColor = .black
-        webView.load(URLRequest(url: url))
-        return webView
+        let c = WKWebViewConfiguration(); c.allowsInlineMediaPlayback = true; c.mediaTypesRequiringUserActionForPlayback = []
+        let w = WKWebView(frame: .zero, configuration: c); w.scrollView.isScrollEnabled = false; w.backgroundColor = .black
+        w.load(URLRequest(url: url)); return w
     }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {}
+    func updateUIView(_ w: WKWebView, context: Context) {}
 }
 
-// MARK: - Video Player Controller
-struct VideoPlayerController: UIViewControllerRepresentable {
+struct VideoPlayerWrap: UIViewControllerRepresentable {
     let player: AVPlayer
     @Binding var isPlaying: Bool
     @Binding var currentTime: Double
     @Binding var totalTime: Double
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
-        let controller = AVPlayerViewController()
-        controller.player = player
-        controller.showsPlaybackControls = false
-        controller.videoGravity = .resizeAspectFill
-        context.coordinator.addTimeObserver(player: player, controller: controller)
-        return controller
+        let c = AVPlayerViewController(); c.player = player; c.showsPlaybackControls = false; c.videoGravity = .resizeAspectFill
+        context.coordinator.addObserver(player: player)
+        return c
     }
-
-    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
-        if isPlaying {
-            uiViewController.player?.play()
-        } else {
-            uiViewController.player?.pause()
-        }
+    func updateUIViewController(_ c: AVPlayerViewController, context: Context) {
+        isPlaying ? c.player?.play() : c.player?.pause()
     }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     class Coordinator: NSObject {
-        let parent: VideoPlayerController
-        var timeObserver: Any?
-
-        init(_ parent: VideoPlayerController) {
-            self.parent = parent
-        }
-
-        func addTimeObserver(player: AVPlayer, controller: AVPlayerViewController) {
+        let p: VideoPlayerWrap; var obs: Any?
+        init(_ p: VideoPlayerWrap) { self.p = p }
+        func addObserver(player: AVPlayer) {
             guard let item = player.currentItem else { return }
-            parent.totalTime = item.duration.seconds
-
-            timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { time in
-                self.parent.currentTime = time.seconds
-                self.parent.totalTime = item.duration.seconds
+            p.totalTime = item.duration.seconds
+            obs = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { t in
+                self.p.currentTime = t.seconds; self.p.totalTime = item.duration.seconds
             }
         }
-
-        deinit {
-            if let observer = timeObserver {
-                parent.player.removeTimeObserver(observer)
-            }
-        }
+        deinit { if let o = obs { p.player.removeTimeObserver(o) } }
     }
 }

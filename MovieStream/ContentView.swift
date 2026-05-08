@@ -3,75 +3,43 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab: AppTab = .home
     @State private var showSplash = true
-    @Namespace private var animation
+    @State private var showSettings = false
+    @EnvironmentObject private var settingsVM: SettingsViewModel
 
     var body: some View {
         ZStack {
-            Color.darkBackground.ignoresSafeArea()
-
-            if showSplash {
-                splashScreen
-            } else {
+            Color.bgGradient.ignoresSafeArea()
+            if showSplash { splash }
+            else {
                 VStack(spacing: 0) {
-                    mainContent
-                    AnimatedTabBar(selectedTab: $selectedTab)
+                    Group {
+                        switch selectedTab {
+                        case .home: HomeView()
+                        case .browse: BrowseView()
+                        case .search: SearchView()
+                        case .favorites: FavoritesView()
+                        }
+                    }
+                    AppTabBar(selectedTab: $selectedTab)
                 }
             }
         }
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    showSplash = false
-                }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeOut(duration: 0.4)) { showSplash = false }
             }
+        }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenSettings"))) { _ in
+            showSettings = true
         }
     }
 
-    private var splashScreen: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "play.rectangle.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.accentGold)
-                .glow(color: .accentGold, radius: 25)
-            Text("MOVE MK")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-            Text("أفلام ومسلسلات بجودة عالية")
-                .font(.headline)
-                .foregroundColor(.textSecondary)
+    private var splash: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "play.rectangle.fill").font(.system(size: 70)).foregroundColor(.accentGold).glow()
+            Text("MOVE MK").font(.system(size: 34, weight: .bold, design: .rounded)).foregroundColor(.white)
+            Text("أفلام ومسلسلات بجودة عالية").font(.headline).foregroundColor(.textSec)
         }
-        .transition(.opacity)
-    }
-
-    private var mainContent: some View {
-        Group {
-            switch selectedTab {
-            case .home:
-                HomeView()
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            case .browse:
-                BrowseView()
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            case .search:
-                SearchView()
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            case .favorites:
-                FavoritesView()
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            }
-        }
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: selectedTab)
     }
 }

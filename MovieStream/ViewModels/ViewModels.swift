@@ -7,7 +7,9 @@ class HomeViewModel: ObservableObject {
     @Published var featuredMovie: Movie?
     @Published var selectedGenre: Genre = .all
     @Published var isLoading = false
-    @Published var errorMessage: String?
+    @Published var errorCase: ErrorCase? = nil
+
+    enum ErrorCase: Equatable { case notConfigured, network }
 
     private let apiService = APIService()
 
@@ -17,21 +19,17 @@ class HomeViewModel: ObservableObject {
     }
 
     func fetchMovies() async {
-        isLoading = true
-        errorMessage = nil
+        isLoading = true; errorCase = nil
         do {
-            let response = try await apiService.fetchMovies()
-            trendingMovies = response.movies
-            recentlyAdded = Array(response.movies.suffix(6))
-            featuredMovie = response.movies.first
+            let r = try await apiService.fetchMovies()
+            trendingMovies = r.movies; recentlyAdded = Array(r.movies.suffix(6)); featuredMovie = r.movies.first
         } catch {
-            errorMessage = error.localizedDescription
-            loadMockData()
+            loadMockDataPrivate()
         }
         isLoading = false
     }
 
-    private func loadMockData() {
+    func loadMockDataPrivate() {
         trendingMovies = MockData.movies
         recentlyAdded = Array(MockData.movies.shuffled().prefix(6))
         featuredMovie = MockData.movies.first
@@ -46,25 +44,10 @@ class MovieDetailViewModel: ObservableObject {
     @Published var selectedServer: StreamingSource?
     @Published var selectedQuality: String = "1080p"
 
-    private let apiService = APIService()
-
     func loadMovieDetail(movie: Movie) {
         self.movie = movie
         self.streamingSources = MockData.streamingSources
         self.selectedServer = MockData.streamingSources.first
-    }
-
-    func loadStreamingSources(movieId: Int) async {
-        isLoading = true
-        do {
-            let sources = try await apiService.fetchStreamingSources(movieId: movieId)
-            streamingSources = sources
-            selectedServer = sources.first
-        } catch {
-            streamingSources = MockData.streamingSources
-            selectedServer = MockData.streamingSources.first
-        }
-        isLoading = false
     }
 }
 
@@ -75,15 +58,6 @@ class SearchViewModel: ObservableObject {
     @Published var isSearching = false
     @Published var recentSearches: [String] = []
 
-    private let apiService = APIService()
-
-    var suggestions: [String] {
-        if searchText.isEmpty { return recentSearches }
-        return MockData.movies
-            .filter { $0.displayTitle.localizedCaseInsensitiveContains(searchText) }
-            .map { $0.displayTitle }
-    }
-
     func search() async {
         guard !searchText.isEmpty else { return }
         isSearching = true
@@ -91,50 +65,43 @@ class SearchViewModel: ObservableObject {
             recentSearches.insert(searchText, at: 0)
             if recentSearches.count > 10 { recentSearches.removeLast() }
         }
-        do {
-            let results = try await apiService.searchMovies(query: searchText)
-            searchResults = results
-        } catch {
-            searchResults = MockData.movies.filter {
-                $0.displayTitle.localizedCaseInsensitiveContains(searchText)
-            }
-        }
+        searchResults = MockData.movies.filter { $0.displayTitle.localizedCaseInsensitiveContains(searchText) }
         isSearching = false
     }
 
-    func clearSearch() {
-        searchText = ""
-        searchResults = []
-    }
+    func clearSearch() { searchText = ""; searchResults = [] }
 }
 
 @MainActor
 class FavoritesViewModel: ObservableObject {
     @Published var favorites: [Movie] = []
     private let defaults = UserDefaults.standard
-    private let favoritesKey = "favorites"
+    private let key = "favorites"
 
     func loadFavorites() {
-        guard let data = defaults.data(forKey: favoritesKey),
-              let movies = try? JSONDecoder().decode([Movie].self, from: data) else { return }
-        favorites = movies
+        guard let d = defaults.data(forKey: key), let m = try? JSONDecoder().decode([Movie].self, from: d) else { return }
+        favorites = m
     }
 
     func toggleFavorite(_ movie: Movie) {
-        if let index = favorites.firstIndex(where: { $0.id == movie.id }) {
-            favorites.remove(at: index)
-        } else {
-            favorites.append(movie)
-        }
-        saveFavorites()
+        if let i = favorites.firstIndex(where: { $0.id == movie.id }) { favorites.remove(at: i) }
+        else { favorites.append(movie) }
+        save()
     }
 
-    func isFavorite(_ movie: Movie) -> Bool {
-        favorites.contains(where: { $0.id == movie.id })
-    }
+    func isFavorite(_ movie: Movie) -> Bool { favorites.contains { $0.id == movie.id } }
+    private func save() { guard let d = try? JSONEncoder().encode(favorites) else { return }; defaults.set(d, forKey: key) }
+}
 
-    private func saveFavorites() {
-        guard let data = try? JSONEncoder().encode(favorites) else { return }
-        defaults.set(data, forKey: favoritesKey)
+@MainActor
+class SettingsViewModel: ObservableObject {
+    @Published var apiURL: String = UserDefaults.standard.string(forKey: "api_base_url") ?? ""
+
+    var isConfigured: Bool { !apiURL.isEmpty && !apiURL.contains("example.com") }
+
+    func saveURL(_ url: String) {
+        apiURL = url
+        UserDefaults.standard.set(url, forKey: "api_base_url")
+        NotificationCenter.default.post(name: Notification.Name("APIConfigured"), object: nil)
     }
 }

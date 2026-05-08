@@ -1,14 +1,15 @@
 import SwiftUI
 
 @main
-struct MovieStreamApp: App {
+struct MoveMKApp: App {
     @StateObject private var favoritesVM = FavoritesViewModel()
-    @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var settingsVM = SettingsViewModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(favoritesVM)
+                .environmentObject(settingsVM)
                 .preferredColorScheme(.dark)
                 .environment(\.layoutDirection, .rightToLeft)
         }
