@@ -144,7 +144,7 @@ struct TabButton: View {
                 Text(tab.arabicTitle).font(.system(size: 9)).fontWeight(isSelected ? .bold : .medium)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 8)
-            .background(isSelected ? Color.accentGold.opacity(0.15) : nil, in: RoundedRectangle(cornerRadius: 16))
+            .background(isSelected ? AnyShapeStyle(Color.accentGold.opacity(0.15)) : AnyShapeStyle(.clear), in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
         .foregroundColor(isSelected ? .accentGold : .textSec)
