@@ -136,8 +136,8 @@ struct GenreChip: View {
             .padding(.vertical, 8)
             .background(
                 isSelected
-                    ? Color.accentGold.opacity(0.3)
-                    : .ultraThinMaterial,
+                    ? AnyShapeStyle(Color.accentGold.opacity(0.3))
+                    : AnyShapeStyle(.ultraThinMaterial),
                 in: RoundedRectangle(cornerRadius: 20)
             )
             .overlay(
@@ -208,8 +208,8 @@ struct QualityBadge: View {
             .padding(.vertical, 5)
             .background(
                 isSelected
-                    ? Color.accentGold.opacity(0.3)
-                    : .ultraThinMaterial,
+                    ? AnyShapeStyle(Color.accentGold.opacity(0.3))
+                    : AnyShapeStyle(.ultraThinMaterial),
                 in: RoundedRectangle(cornerRadius: 8)
             )
             .overlay(
