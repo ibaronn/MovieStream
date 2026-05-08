@@ -1,0 +1,21 @@
+name: MovieStream
+options:
+  bundleIdPrefix: com.moviestream
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+targets:
+  MovieStream:
+    type: application
+    platform: iOS
+    sources:
+      - MovieStream
+    settings:
+      base:
+        INFOPLIST_FILE: MovieStream/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.moviestream.app
+        DEVELOPMENT_TEAM: ""
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
