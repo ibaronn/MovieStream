@@ -1,0 +1,42 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Generate Xcode Project
+      run: |
+        brew install xcodegen
+        xcodegen
+
+    - name: Build .app Bundle (unsigned)
+      run: |
+        xcodebuild build \
+          -project MovieStream.xcodeproj \
+          -scheme MovieStream \
+          -destination 'generic/platform=iOS' \
+          -configuration Release \
+          -derivedDataPath build \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO
+
+    - name: Package unsigned IPA
+      run: |
+        mkdir -p Payload
+        cp -r build/Build/Products/Release-iphoneos/MovieStream.app Payload/
+        zip -r MovieStream-unsigned.ipa Payload/
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: MovieStream-unsigned-IPA
+        path: MovieStream-unsigned.ipa
+        compression-level: 0
