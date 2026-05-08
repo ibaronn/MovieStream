@@ -81,7 +81,10 @@ struct GenreChip: View {
                 Text(genre.rawValue).font(.subheadline).fontWeight(isSelected ? .bold : .medium)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(isSelected ? Color.accentGold.opacity(0.25) : .thickMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .background(
+                isSelected ? AnyShapeStyle(Color.accentGold.opacity(0.25)) : AnyShapeStyle(.thickMaterial),
+                in: RoundedRectangle(cornerRadius: 20)
+            )
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(isSelected ? Color.accentGold : .white.opacity(0.1), lineWidth: 1.5))
             .foregroundColor(isSelected ? .accentGold : .white)
         }.buttonStyle(.plain)
@@ -106,7 +109,10 @@ struct QualityBadge: View {
     let quality: String; var isSelected: Bool = false
     var body: some View {
         Text(quality).font(.caption).fontWeight(.bold).padding(.horizontal, 10).padding(.vertical, 5)
-            .background(isSelected ? Color.accentGold.opacity(0.25) : .thickMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .background(
+                isSelected ? AnyShapeStyle(Color.accentGold.opacity(0.25)) : AnyShapeStyle(.thickMaterial),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? Color.accentGold : .white.opacity(0.1), lineWidth: 1))
             .foregroundColor(isSelected ? .accentGold : .white)
     }
@@ -118,18 +124,7 @@ struct AppTabBar: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
-                Button {
-                    selectedTab = tab
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.rawValue).font(.system(size: 20)).frame(height: 22)
-                        Text(tab.arabicTitle).font(.system(size: 9)).fontWeight(selectedTab == tab ? .bold : .medium)
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 8)
-                    .background(selectedTab == tab ? Color.accentGold.opacity(0.15) : nil, in: RoundedRectangle(cornerRadius: 16))
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(selectedTab == tab ? .accentGold : .textSec)
+                TabButton(tab: tab, isSelected: selectedTab == tab) { selectedTab = tab }
             }
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
@@ -137,6 +132,22 @@ struct AppTabBar: View {
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.1), lineWidth: 1))
         .shadow(color: .black.opacity(0.4), radius: 15)
         .padding(.horizontal, 12).padding(.bottom, 8)
+    }
+}
+
+struct TabButton: View {
+    let tab: AppTab; let isSelected: Bool; let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: tab.rawValue).font(.system(size: 20)).frame(height: 22)
+                Text(tab.arabicTitle).font(.system(size: 9)).fontWeight(isSelected ? .bold : .medium)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 8)
+            .background(isSelected ? Color.accentGold.opacity(0.15) : nil, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(isSelected ? .accentGold : .textSec)
     }
 }
 
