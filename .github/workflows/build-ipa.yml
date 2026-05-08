@@ -12,6 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Generate App Icon
+      run: swift Scripts/generate-icon.swift
+
     - name: Generate Xcode Project
       run: |
         brew install xcodegen
@@ -20,8 +23,8 @@ jobs:
     - name: Build .app Bundle (unsigned)
       run: |
         xcodebuild build \
-          -project MovieStream.xcodeproj \
-          -scheme MovieStream \
+          -project MoveMK.xcodeproj \
+          -scheme MoveMK \
           -destination 'generic/platform=iOS' \
           -configuration Release \
           -derivedDataPath build \
@@ -32,11 +35,11 @@ jobs:
     - name: Package unsigned IPA
       run: |
         mkdir -p Payload
-        cp -r build/Build/Products/Release-iphoneos/MovieStream.app Payload/
-        zip -r MovieStream-unsigned.ipa Payload/
+        cp -r build/Build/Products/Release-iphoneos/MoveMK.app Payload/
+        zip -r MoveMK-unsigned.ipa Payload/
 
     - uses: actions/upload-artifact@v4
       with:
-        name: MovieStream-unsigned-IPA
-        path: MovieStream-unsigned.ipa
+        name: MoveMK-unsigned-IPA
+        path: MoveMK-unsigned.ipa
         compression-level: 0

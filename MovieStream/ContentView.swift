@@ -33,7 +33,7 @@ struct ContentView: View {
                 .font(.system(size: 80))
                 .foregroundColor(.accentGold)
                 .glow(color: .accentGold, radius: 25)
-            Text("MovieStream")
+            Text("MOVE MK")
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
             Text("أفلام ومسلسلات بجودة عالية")

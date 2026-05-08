@@ -1,13 +1,13 @@
-name: MovieStream
+name: MoveMK
 options:
-  bundleIdPrefix: com.moviestream
+  bundleIdPrefix: com.movemk
   deploymentTarget:
     iOS: "16.0"
 settings:
   base:
     SWIFT_VERSION: "5.9"
 targets:
-  MovieStream:
+  MoveMK:
     type: application
     platform: iOS
     sources:
@@ -15,7 +15,8 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: MovieStream/Resources/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.moviestream.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.movemk.app
+        PRODUCT_NAME: MoveMK
         DEVELOPMENT_TEAM: ""
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
