@@ -80,14 +80,12 @@ img.unlockFocus()
 
 guard let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else { fatalError() }
 let bmp = NSBitmapImageRep(cgImage: cg)
-let sz = min(bmp.representations.first?.pixelsWide ?? 1024, 1024)
 
-// Generate all required sizes
-let fm = FileManager.default
+// Save icon
 let dir = (out as NSString).deletingLastPathComponent
 let sizes = [(1024, "icon.png")]
 
-for (sz, name) in sizes {
+for (_, name) in sizes {
     let o = "\(dir)/\(name)"
     guard let d = bmp.representation(using: .png, properties: [:]) else { continue }
     try? d.write(to: URL(fileURLWithPath: o))
